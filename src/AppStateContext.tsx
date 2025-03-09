@@ -3,59 +3,96 @@ import {
   useContext,
   useReducer,
   PropsWithChildren,
+  Dispatch,
 } from "react";
-import { QWERTY_KEYBOARD } from "./Constants";
+import { DEFAULT_WORD_LENGTH, QWERTY_KEYBOARD } from "./Constants";
 
-type Constraint = { key: string };
-
-type State = {
-  keyboardRows: string[][];
-  wordLength: number;
-  constraints: Constraint[];
-};
-
-export function defaultState(): State {
-  return {
-    wordLength: 5,
-    constraints: [],
-    keyboardRows: QWERTY_KEYBOARD,
+if (!Array.prototype.removeInPlace) {
+  Array.prototype.removeInPlace = function <T>(
+    predicate: (element: T) => boolean
+  ): void {
+    for (let i = this.length - 1; i >= 0; i--) {
+      if (predicate(this[i])) {
+        this.splice(i, 1);
+      }
+    }
   };
 }
 
-function reducer(currentState: State, action: string): State {
-  switch (action) {
-    default: {
-      return {
-        ...currentState,
-        constraints: [...currentState.constraints, { key: action }],
-      };
-    }
-  }
+type Constraint = { kind: "absent" };
+
+type KeyState = {
+  strikethrough: boolean;
+};
+
+export function defaultKeyState(): KeyState {
+  return { strikethrough: false };
 }
 
-export const StateContext = createContext<State>(defaultState());
-export const DispatchContext = createContext<React.Dispatch<string>>(
-  (action: string) => {
-    console.log("wiring issue", action);
+type State = {
+  keyboard: string[][];
+  wordLength: number;
+  constraints: Map<string, Constraint[]>;
+  keyStates: Map<string, KeyState>;
+};
+
+function defaultAppState(): State {
+  return {
+    wordLength: DEFAULT_WORD_LENGTH,
+    keyboard: QWERTY_KEYBOARD,
+    constraints: new Map(),
+    keyStates: new Map(),
+  };
+}
+
+function reducer(currentState: State, key: string): State {
+  const nextState = structuredClone(currentState);
+
+  const letterConstraints = nextState.constraints.get(key) ?? [];
+  const keyState = nextState.keyStates.get(key) ?? defaultKeyState();
+
+  const isAbsent = letterConstraints.some((c) => c.kind === "absent");
+
+  switch (isAbsent) {
+    case false: {
+      letterConstraints.push({ kind: "absent" });
+      keyState.strikethrough = true;
+      break;
+    }
+    case true: {
+      letterConstraints.removeInPlace((c) => c.kind === "absent");
+      keyState.strikethrough = false;
+      break;
+    }
   }
-);
+
+  nextState.constraints.set(key, letterConstraints);
+  nextState.keyStates.set(key, keyState);
+
+  return nextState;
+}
+
+const AppStateContext = createContext<State>(defaultAppState());
+const AppDispatchContext = createContext<Dispatch<string>>((action: string) => {
+  console.error(`dispatch wiring issue: ${action}`);
+});
 
 export function StateProvider({ children }: PropsWithChildren) {
-  const [state, dispatch] = useReducer(reducer, defaultState());
+  const [state, dispatch] = useReducer(reducer, defaultAppState());
 
   return (
-    <StateContext.Provider value={state}>
-      <DispatchContext.Provider value={dispatch}>
+    <AppStateContext.Provider value={state}>
+      <AppDispatchContext.Provider value={dispatch}>
         {children}
-      </DispatchContext.Provider>
-    </StateContext.Provider>
+      </AppDispatchContext.Provider>
+    </AppStateContext.Provider>
   );
 }
 
 export function useAppState() {
-  return useContext(StateContext);
+  return useContext(AppStateContext);
 }
 
 export function useAppDispatch() {
-  return useContext(DispatchContext);
+  return useContext(AppDispatchContext);
 }

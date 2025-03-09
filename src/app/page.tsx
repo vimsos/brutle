@@ -1,14 +1,20 @@
 "use client";
 
-import { StateProvider, useAppDispatch, useAppState } from "../AppStateContext";
+import {
+  defaultKeyState,
+  StateProvider,
+  useAppDispatch,
+  useAppState,
+} from "../AppStateContext";
 
 function Title() {
   return <h1 className="text-5xl m-2">brutle</h1>;
 }
 
 function InputDisplay() {
-  const { wordLength, constraints } = useAppState();
-  return <>{JSON.stringify({ wordLength, constraints })}</>;
+  const { constraints } = useAppState();
+  const visualization = JSON.stringify(Array.from(constraints.entries()));
+  return <p>{visualization}</p>;
 }
 
 function WordDisplay() {
@@ -16,14 +22,14 @@ function WordDisplay() {
 }
 
 function Keyboard() {
-  const { keyboardRows } = useAppState();
+  const { keyboard } = useAppState();
   return (
     <div className="m-2">
-      {keyboardRows.map((letters, index) => {
+      {keyboard.map((row, index) => {
         return (
-          <div key={`row-${index}`} className="flex justify-center">
-            {letters.map((l) => (
-              <Key key={l} letter={l} />
+          <div key={`kb-row-${index}`} className="flex justify-center">
+            {row.map((letter) => (
+              <Key key={`kb-row-${letter}`} letter={letter} />
             ))}
           </div>
         );
@@ -33,15 +39,20 @@ function Keyboard() {
 }
 
 function Key({ letter }: { letter: string }) {
+  const { strikethrough } =
+    useAppState().keyStates.get(letter) ?? defaultKeyState();
   const dispatch = useAppDispatch();
+
   return (
     <div
-      className="text-2xl border-1 min-h-8 min-w-8 rounded m-1 items-center justify-center"
+      className={
+        "text-2xl border-1 min-h-8 min-w-8 rounded m-1 items-center justify-center"
+      }
       onClick={() => {
         dispatch(letter);
       }}
     >
-      {letter}
+      <p>{strikethrough ? <s>{letter}</s> : letter}</p>
     </div>
   );
 }

@@ -3,3 +3,5 @@ export const QWERTY_KEYBOARD = [
   ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
   ["z", "x", "c", "v", "b", "n", "m"],
 ];
+
+export const DEFAULT_WORD_LENGTH = 5;
