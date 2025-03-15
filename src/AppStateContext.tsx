@@ -21,7 +21,7 @@ if (!Array.prototype.removeInPlace) {
 
 type Constraint = { kind: "absent" };
 
-type KeyState = {
+export type KeyState = {
   strikethrough: boolean;
 };
 
@@ -33,21 +33,37 @@ type State = {
   keyboard: string[][];
   wordLength: number;
   constraints: Map<string, Constraint[]>;
-  keyStates: Map<string, KeyState>;
 };
 
+export function deriveKeyStates(
+  keyboard: string[][],
+  input: Map<string, Constraint[]>
+): Map<string, KeyState> {
+  return new Map<string, KeyState>(
+    keyboard.flat().map((key) => {
+      const constraints = input.get(key) ?? defaultKeyConstraints();
+
+      const strikethrough = constraints.some((c) => c.kind === "absent");
+
+      return [key, { strikethrough }];
+    })
+  );
+}
+
 function createAppState(wordLength: number, keyboard: string[][]): State {
-  const keys = keyboard.flatMap((row) => row);
   const constraints = new Map(
-    keys.map((l) => [l, new Array<Constraint>({ kind: "absent" })])
+    keyboard.flat().map((l) => [l, defaultKeyConstraints()])
   );
 
   return {
     wordLength,
     keyboard,
     constraints,
-    keyStates: new Map(),
   };
+}
+
+function defaultKeyConstraints(): Constraint[] {
+  return [{ kind: "absent" }];
 }
 
 function defaultAppState(): State {
@@ -58,25 +74,21 @@ function reducer(currentState: State, key: string): State {
   const nextState = structuredClone(currentState);
 
   const letterConstraints = nextState.constraints.get(key) ?? [];
-  const keyState = nextState.keyStates.get(key) ?? defaultKeyState();
 
   const isAbsent = letterConstraints.some((c) => c.kind === "absent");
 
   switch (isAbsent) {
     case false: {
       letterConstraints.push({ kind: "absent" });
-      keyState.strikethrough = true;
       break;
     }
     case true: {
       letterConstraints.removeInPlace((c) => c.kind === "absent");
-      keyState.strikethrough = false;
       break;
     }
   }
 
   nextState.constraints.set(key, letterConstraints);
-  nextState.keyStates.set(key, keyState);
 
   return nextState;
 }

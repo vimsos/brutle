@@ -2,6 +2,8 @@
 
 import {
   defaultKeyState,
+  deriveKeyStates,
+  KeyState,
   StateProvider,
   useAppDispatch,
   useAppState,
@@ -22,15 +24,24 @@ function WordDisplay() {
 }
 
 function Keyboard() {
-  const { keyboard } = useAppState();
+  const { keyboard, constraints } = useAppState();
+  const keyStates = deriveKeyStates(keyboard, constraints);
+
   return (
     <div className="m-2">
       {keyboard.map((row, index) => {
         return (
           <div key={`kb-row-${index}`} className="flex justify-center">
-            {row.map((letter) => (
-              <Key key={`kb-row-${letter}`} letter={letter} />
-            ))}
+            {row.map((letter) => {
+              const keyState = keyStates.get(letter) ?? defaultKeyState();
+              return (
+                <Key
+                  key={`kb-row-${letter}`}
+                  letter={letter}
+                  keyState={keyState}
+                />
+              );
+            })}
           </div>
         );
       })}
@@ -38,9 +49,8 @@ function Keyboard() {
   );
 }
 
-function Key({ letter }: { letter: string }) {
-  const { strikethrough } =
-    useAppState().keyStates.get(letter) ?? defaultKeyState();
+function Key({ letter, keyState }: { letter: string; keyState: KeyState }) {
+  const { strikethrough } = keyState;
   const dispatch = useAppDispatch();
 
   return (
