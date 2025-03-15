@@ -19,7 +19,10 @@ if (!Array.prototype.removeInPlace) {
   };
 }
 
-type Constraint = { kind: "absent" };
+type Constraint =
+  | { kind: "absent" }
+  | { kind: "atLeast"; count: number }
+  | { kind: "exactly"; count: number };
 
 export type KeyState = {
   strikethrough: boolean;
@@ -78,12 +81,16 @@ function reducer(currentState: State, key: string): State {
   const isAbsent = letterConstraints.some((c) => c.kind === "absent");
 
   switch (isAbsent) {
-    case false: {
-      letterConstraints.push({ kind: "absent" });
-      break;
-    }
     case true: {
       letterConstraints.removeInPlace((c) => c.kind === "absent");
+      letterConstraints.push({ kind: "atLeast", count: 1 });
+      break;
+    }
+    case false: {
+      letterConstraints.removeInPlace(
+        (c) => c.kind === "atLeast" || c.kind === "exactly"
+      );
+      letterConstraints.push({ kind: "absent" });
       break;
     }
   }
