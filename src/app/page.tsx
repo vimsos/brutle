@@ -59,7 +59,7 @@ function Key({ letter, keyState }: { letter: string; keyState: KeyState }) {
         "text-2xl border-1 min-h-8 min-w-8 rounded m-1 items-center justify-center"
       }
       onClick={() => {
-        dispatch(letter);
+        dispatch({ kind: "letterPressed", letter });
       }}
     >
       <p>{strikethrough ? <s>{letter}</s> : letter}</p>

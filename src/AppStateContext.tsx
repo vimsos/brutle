@@ -19,6 +19,9 @@ if (!Array.prototype.removeInPlace) {
   };
 }
 
+type LetterPressedAction = { kind: "letterPressed"; letter: string };
+export type Action = LetterPressedAction;
+
 type Constraint =
   | { kind: "absent" }
   | { kind: "atLeast"; count: number }
@@ -29,7 +32,7 @@ export type KeyState = {
 };
 
 export function defaultKeyState(): KeyState {
-  return { strikethrough: false };
+  return { strikethrough: true };
 }
 
 type State = {
@@ -73,36 +76,43 @@ function defaultAppState(): State {
   return createAppState(DEFAULT_WORD_LENGTH, QWERTY_KEYBOARD);
 }
 
-function reducer(currentState: State, key: string): State {
-  const nextState = structuredClone(currentState);
+function handleLetterPressed(
+  state: State,
+  { letter }: LetterPressedAction
+): void {
+  const constraints = state.constraints.get(letter) ?? [];
 
-  const letterConstraints = nextState.constraints.get(key) ?? [];
-
-  const isAbsent = letterConstraints.some((c) => c.kind === "absent");
+  const isAbsent = constraints.some((c) => c.kind === "absent");
 
   switch (isAbsent) {
     case true: {
-      letterConstraints.removeInPlace((c) => c.kind === "absent");
-      letterConstraints.push({ kind: "atLeast", count: 1 });
+      constraints.removeInPlace((c) => c.kind === "absent");
+      constraints.push({ kind: "atLeast", count: 1 });
       break;
     }
     case false: {
-      letterConstraints.removeInPlace(
+      constraints.removeInPlace(
         (c) => c.kind === "atLeast" || c.kind === "exactly"
       );
-      letterConstraints.push({ kind: "absent" });
+      constraints.push({ kind: "absent" });
       break;
     }
   }
 
-  nextState.constraints.set(key, letterConstraints);
+  state.constraints.set(letter, constraints);
+}
+
+function reducer(currentState: State, action: Action): State {
+  const nextState = structuredClone(currentState);
+
+  if (action.kind === "letterPressed") handleLetterPressed(nextState, action);
 
   return nextState;
 }
 
 const AppStateContext = createContext<State>(defaultAppState());
-const AppDispatchContext = createContext<Dispatch<string>>((action: string) => {
-  console.error(`dispatch wiring issue: ${action}`);
+const AppDispatchContext = createContext<Dispatch<Action>>((action: Action) => {
+  console.error(`dispatch wiring issue: ${JSON.stringify(action)}`);
 });
 
 export function StateProvider({ children }: PropsWithChildren) {
