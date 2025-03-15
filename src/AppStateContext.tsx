@@ -36,13 +36,22 @@ type State = {
   keyStates: Map<string, KeyState>;
 };
 
-function defaultAppState(): State {
+function createAppState(wordLength: number, keyboard: string[][]): State {
+  const keys = keyboard.flatMap((row) => row);
+  const constraints = new Map(
+    keys.map((l) => [l, new Array<Constraint>({ kind: "absent" })])
+  );
+
   return {
-    wordLength: DEFAULT_WORD_LENGTH,
-    keyboard: QWERTY_KEYBOARD,
-    constraints: new Map(),
+    wordLength,
+    keyboard,
+    constraints,
     keyStates: new Map(),
   };
+}
+
+function defaultAppState(): State {
+  return createAppState(DEFAULT_WORD_LENGTH, QWERTY_KEYBOARD);
 }
 
 function reducer(currentState: State, key: string): State {
