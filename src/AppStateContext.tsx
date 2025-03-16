@@ -24,50 +24,20 @@ type LetterUpAction = { kind: "up"; letter: string };
 type LetterLockAction = { kind: "lock"; letter: string };
 export type Action = LetterPressedAction | LetterUpAction | LetterLockAction;
 
-type Constraint =
+export type Constraint =
   | { kind: "absent" }
   | { kind: "atLeast"; count: number }
   | { kind: "exactly"; count: number };
 
-export type KeyState = {
-  strikethrough: boolean;
-  count: number;
-  locked: boolean;
-};
-
-export function defaultKeyState(): KeyState {
-  return { strikethrough: true, count: 0, locked: false };
-}
-
-type State = {
+type AppState = {
   keyboard: string[][];
   wordLength: number;
   constraints: Map<string, Constraint[]>;
 };
 
-export function deriveKeyStates(
-  keyboard: string[][],
-  input: Map<string, Constraint[]>
-): Map<string, KeyState> {
-  return new Map<string, KeyState>(
-    keyboard.flat().map((key) => {
-      const constraints = input.get(key) ?? defaultKeyConstraints();
-
-      const strikethrough = constraints.some((c) => c.kind === "absent");
-      const countConstraint = constraints.find(
-        (c) => c.kind === "atLeast" || c.kind === "exactly"
-      );
-      const count = countConstraint === undefined ? 0 : countConstraint.count;
-      const locked = countConstraint?.kind === "exactly";
-
-      return [key, { strikethrough, count, locked }];
-    })
-  );
-}
-
-function createAppState(wordLength: number, keyboard: string[][]): State {
+function createAppState(wordLength: number, keyboard: string[][]): AppState {
   const constraints = new Map(
-    keyboard.flat().map((l) => [l, defaultKeyConstraints()])
+    keyboard.flat().map((l) => [l, defaultLetterConstraints()])
   );
 
   return {
@@ -77,19 +47,20 @@ function createAppState(wordLength: number, keyboard: string[][]): State {
   };
 }
 
-function defaultKeyConstraints(): Constraint[] {
+export function defaultLetterConstraints(): Constraint[] {
   return [{ kind: "absent" }];
 }
 
-function defaultAppState(): State {
+function defaultAppState(): AppState {
   return createAppState(DEFAULT_WORD_LENGTH, QWERTY_KEYBOARD);
 }
 
 function handleLetterPressed(
-  state: State,
+  state: AppState,
   { letter }: LetterPressedAction
 ): void {
-  const constraints = state.constraints.get(letter) ?? defaultKeyConstraints();
+  const constraints =
+    state.constraints.get(letter) ?? defaultLetterConstraints();
 
   const isAbsent = constraints.some((c) => c.kind === "absent");
 
@@ -111,8 +82,9 @@ function handleLetterPressed(
   state.constraints.set(letter, constraints);
 }
 
-function handleLetterUp(state: State, { letter }: LetterUpAction): void {
-  const constraints = state.constraints.get(letter) ?? defaultKeyConstraints();
+function handleLetterUp(state: AppState, { letter }: LetterUpAction): void {
+  const constraints =
+    state.constraints.get(letter) ?? defaultLetterConstraints();
 
   const countConstraint = constraints.find(
     (c) => c.kind === "atLeast" || c.kind === "exactly"
@@ -126,8 +98,9 @@ function handleLetterUp(state: State, { letter }: LetterUpAction): void {
       : countConstraint.count + 1;
 }
 
-function handleLetterLock(state: State, { letter }: LetterLockAction): void {
-  const constraints = state.constraints.get(letter) ?? defaultKeyConstraints();
+function handleLetterLock(state: AppState, { letter }: LetterLockAction): void {
+  const constraints =
+    state.constraints.get(letter) ?? defaultLetterConstraints();
 
   const countConstraint = constraints.find(
     (c) => c.kind === "atLeast" || c.kind === "exactly"
@@ -139,7 +112,7 @@ function handleLetterLock(state: State, { letter }: LetterLockAction): void {
     countConstraint.kind === "atLeast" ? "exactly" : "atLeast";
 }
 
-function reducer(currentState: State, action: Action): State {
+function reducer(currentState: AppState, action: Action): AppState {
   const nextState = structuredClone(currentState);
 
   if (action.kind === "letter") handleLetterPressed(nextState, action);
@@ -149,7 +122,7 @@ function reducer(currentState: State, action: Action): State {
   return nextState;
 }
 
-const AppStateContext = createContext<State>(defaultAppState());
+const AppStateContext = createContext<AppState>(defaultAppState());
 const AppDispatchContext = createContext<Dispatch<Action>>((action: Action) => {
   console.error(`dispatch wiring issue: ${JSON.stringify(action)}`);
 });
