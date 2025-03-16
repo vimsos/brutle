@@ -19,8 +19,10 @@ if (!Array.prototype.removeInPlace) {
   };
 }
 
-type LetterPressedAction = { kind: "letterPressed"; letter: string };
-export type Action = LetterPressedAction;
+type LetterPressedAction = { kind: "letter"; letter: string };
+type LetterUpAction = { kind: "up"; letter: string };
+type LetterLockAction = { kind: "lock"; letter: string };
+export type Action = LetterPressedAction | LetterUpAction | LetterLockAction;
 
 type Constraint =
   | { kind: "absent" }
@@ -29,10 +31,12 @@ type Constraint =
 
 export type KeyState = {
   strikethrough: boolean;
+  count: number;
+  locked: boolean;
 };
 
 export function defaultKeyState(): KeyState {
-  return { strikethrough: true };
+  return { strikethrough: true, count: 0, locked: false };
 }
 
 type State = {
@@ -50,8 +54,13 @@ export function deriveKeyStates(
       const constraints = input.get(key) ?? defaultKeyConstraints();
 
       const strikethrough = constraints.some((c) => c.kind === "absent");
+      const countConstraint = constraints.find(
+        (c) => c.kind === "atLeast" || c.kind === "exactly"
+      );
+      const count = countConstraint === undefined ? 0 : countConstraint.count;
+      const locked = countConstraint?.kind === "exactly";
 
-      return [key, { strikethrough }];
+      return [key, { strikethrough, count, locked }];
     })
   );
 }
@@ -80,7 +89,7 @@ function handleLetterPressed(
   state: State,
   { letter }: LetterPressedAction
 ): void {
-  const constraints = state.constraints.get(letter) ?? [];
+  const constraints = state.constraints.get(letter) ?? defaultKeyConstraints();
 
   const isAbsent = constraints.some((c) => c.kind === "absent");
 
@@ -102,10 +111,40 @@ function handleLetterPressed(
   state.constraints.set(letter, constraints);
 }
 
+function handleLetterUp(state: State, { letter }: LetterUpAction): void {
+  const constraints = state.constraints.get(letter) ?? defaultKeyConstraints();
+
+  const countConstraint = constraints.find(
+    (c) => c.kind === "atLeast" || c.kind === "exactly"
+  );
+
+  if (countConstraint === undefined) return;
+
+  countConstraint.count =
+    countConstraint.count + 1 > state.wordLength
+      ? state.wordLength
+      : countConstraint.count + 1;
+}
+
+function handleLetterLock(state: State, { letter }: LetterLockAction): void {
+  const constraints = state.constraints.get(letter) ?? defaultKeyConstraints();
+
+  const countConstraint = constraints.find(
+    (c) => c.kind === "atLeast" || c.kind === "exactly"
+  );
+
+  if (countConstraint === undefined) return;
+
+  countConstraint.kind =
+    countConstraint.kind === "atLeast" ? "exactly" : "atLeast";
+}
+
 function reducer(currentState: State, action: Action): State {
   const nextState = structuredClone(currentState);
 
-  if (action.kind === "letterPressed") handleLetterPressed(nextState, action);
+  if (action.kind === "letter") handleLetterPressed(nextState, action);
+  if (action.kind === "up") handleLetterUp(nextState, action);
+  if (action.kind === "lock") handleLetterLock(nextState, action);
 
   return nextState;
 }

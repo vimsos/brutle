@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${excalifont.className} w-screen h-screen flex flex-col text-center items-center justify-center antialiased select-none`}
+        className={`${excalifont.className} w-screen h-screen flex flex-col text-center items-center justify-center antialiased select-none overflow-hidden`}
       >
         {children}
       </body>
