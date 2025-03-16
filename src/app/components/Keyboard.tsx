@@ -1,9 +1,10 @@
 import {
+  Action,
+  AppState,
   Constraint,
   defaultLetterConstraints,
-  useAppDispatch,
-  useAppState,
-} from "@/AppStateContext";
+} from "@/AppState";
+import { Dispatch } from "react";
 
 type KeyState = {
   strikethrough: boolean;
@@ -35,8 +36,14 @@ function deriveKeyStates(
   );
 }
 
-export function Keyboard() {
-  const { keyboard, constraints } = useAppState();
+export function Keyboard({
+  state,
+  dispatch,
+}: {
+  state: AppState;
+  dispatch: Dispatch<Action>;
+}) {
+  const { keyboard, constraints } = state;
   const keyStates = deriveKeyStates(keyboard, constraints);
 
   return (
@@ -47,7 +54,12 @@ export function Keyboard() {
             {row.map((letter) => {
               const keyState = keyStates.get(letter) ?? defaultKeyState();
               return (
-                <Key key={`kb-${letter}`} letter={letter} keyState={keyState} />
+                <Key
+                  key={`kb-${letter}`}
+                  letter={letter}
+                  keyState={keyState}
+                  dispatch={dispatch}
+                />
               );
             })}
           </div>
@@ -57,9 +69,16 @@ export function Keyboard() {
   );
 }
 
-function Key({ letter, keyState }: { letter: string; keyState: KeyState }) {
+function Key({
+  letter,
+  keyState,
+  dispatch,
+}: {
+  letter: string;
+  keyState: KeyState;
+  dispatch: Dispatch<Action>;
+}) {
   const { strikethrough, count, locked } = keyState;
-  const dispatch = useAppDispatch();
 
   return (
     <div

@@ -1,10 +1,3 @@
-import {
-  createContext,
-  useContext,
-  useReducer,
-  PropsWithChildren,
-  Dispatch,
-} from "react";
 import { DEFAULT_WORD_LENGTH, QWERTY_KEYBOARD } from "./Constants";
 
 if (!Array.prototype.removeInPlace) {
@@ -29,7 +22,7 @@ export type Constraint =
   | { kind: "atLeast"; count: number }
   | { kind: "exactly"; count: number };
 
-type AppState = {
+export type AppState = {
   keyboard: string[][];
   wordLength: number;
   constraints: Map<string, Constraint[]>;
@@ -51,7 +44,7 @@ export function defaultLetterConstraints(): Constraint[] {
   return [{ kind: "absent" }];
 }
 
-function defaultAppState(): AppState {
+export function defaultAppState(): AppState {
   return createAppState(DEFAULT_WORD_LENGTH, QWERTY_KEYBOARD);
 }
 
@@ -112,7 +105,10 @@ function handleLetterLock(state: AppState, { letter }: LetterLockAction): void {
     countConstraint.kind === "atLeast" ? "exactly" : "atLeast";
 }
 
-function reducer(currentState: AppState, action: Action): AppState {
+export function appStateReducer(
+  currentState: AppState,
+  action: Action
+): AppState {
   const nextState = structuredClone(currentState);
 
   if (action.kind === "letter") handleLetterPressed(nextState, action);
@@ -120,29 +116,4 @@ function reducer(currentState: AppState, action: Action): AppState {
   if (action.kind === "lock") handleLetterLock(nextState, action);
 
   return nextState;
-}
-
-const AppStateContext = createContext<AppState>(defaultAppState());
-const AppDispatchContext = createContext<Dispatch<Action>>((action: Action) => {
-  console.error(`dispatch wiring issue: ${JSON.stringify(action)}`);
-});
-
-export function StateProvider({ children }: PropsWithChildren) {
-  const [state, dispatch] = useReducer(reducer, defaultAppState());
-
-  return (
-    <AppStateContext.Provider value={state}>
-      <AppDispatchContext.Provider value={dispatch}>
-        {children}
-      </AppDispatchContext.Provider>
-    </AppStateContext.Provider>
-  );
-}
-
-export function useAppState() {
-  return useContext(AppStateContext);
-}
-
-export function useAppDispatch() {
-  return useContext(AppDispatchContext);
 }
