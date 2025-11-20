@@ -2,22 +2,24 @@
 
 import { useReducer } from "react";
 import { AppState, appStateReducer, defaultAppState } from "../AppState";
-import { Keyboard } from "./components/index";
+import { Keyboard, WordDisplay } from "./components/index";
 
 function Title() {
   return <h1 className="text-5xl m-2">brutle</h1>;
 }
 
-function InputDisplay({ state }: { state: AppState }) {
-  const { constraints } = state;
+function DebugDisplay({ state }: { state: AppState }) {
+  const { constraints, wordLength, selected } = state;
 
-  const visualization = JSON.stringify(Array.from(constraints.entries()));
+  const constraintsJson = JSON.stringify(Array.from(constraints.entries()));
+  const stateJson = JSON.stringify({ wordLength, selected });
 
-  return <p>{visualization}</p>;
-}
-
-function WordDisplay() {
-  return <></>;
+  return (
+    <div className="text-sm">
+      <p>{constraintsJson}</p>
+      <p>{stateJson}</p>
+    </div>
+  );
 }
 
 export default function Home() {
@@ -27,8 +29,8 @@ export default function Home() {
     <>
       <Title />
       <div className="grow">
-        <InputDisplay state={state} />
-        <WordDisplay />
+        <WordDisplay state={state} dispatch={dispatch} />
+        <DebugDisplay state={state} />
       </div>
       <Keyboard state={state} dispatch={dispatch} />
     </>

@@ -1,3 +1,4 @@
 import { Keyboard } from "./Keyboard";
+import { WordDisplay } from "./WordDisplay";
 
-export { Keyboard };
+export { Keyboard, WordDisplay };

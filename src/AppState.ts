@@ -15,16 +15,24 @@ if (!Array.prototype.removeInPlace) {
 type LetterPressedAction = { kind: "letter"; letter: string };
 type LetterUpAction = { kind: "up"; letter: string };
 type LetterLockAction = { kind: "lock"; letter: string };
-export type Action = LetterPressedAction | LetterUpAction | LetterLockAction;
+type SelectPositionAction = { kind: "select"; position: number };
+export type Action =
+  | LetterPressedAction
+  | LetterUpAction
+  | LetterLockAction
+  | SelectPositionAction;
 
 export type Constraint =
   | { kind: "absent" }
   | { kind: "atLeast"; count: number }
-  | { kind: "exactly"; count: number };
+  | { kind: "exactly"; count: number }
+  | { kind: "presentAt"; index: number }
+  | { kind: "absentAt"; index: number };
 
 export type AppState = {
   keyboard: string[][];
   wordLength: number;
+  selected?: number;
   constraints: Map<string, Constraint[]>;
 };
 
@@ -55,20 +63,41 @@ function handleLetterPressed(
   const constraints =
     state.constraints.get(letter) ?? defaultLetterConstraints();
 
-  const isAbsent = constraints.some((c) => c.kind === "absent");
+  if (state.selected === undefined) {
+    const isAbsent = constraints.some((c) => c.kind === "absent");
 
-  switch (isAbsent) {
-    case true: {
+    if (isAbsent) {
       constraints.removeInPlace((c) => c.kind === "absent");
       constraints.push({ kind: "atLeast", count: 1 });
-      break;
-    }
-    case false: {
+    } else {
       constraints.removeInPlace(
-        (c) => c.kind === "atLeast" || c.kind === "exactly"
+        (c) =>
+          c.kind === "atLeast" ||
+          c.kind === "exactly" ||
+          c.kind === "presentAt" ||
+          c.kind === "absentAt"
       );
       constraints.push({ kind: "absent" });
-      break;
+    }
+  } else {
+    const constraintIndex = state.selected % state.wordLength;
+    const presenceConstraint = constraints.find(
+      (c) =>
+        (c.kind === "presentAt" || c.kind === "absentAt") &&
+        c.index == constraintIndex
+    );
+
+    if (presenceConstraint === undefined) {
+      constraints.removeInPlace((c) => c.kind === "absent");
+      constraints.push({ kind: "presentAt", index: constraintIndex });
+    } else if (presenceConstraint.kind === "presentAt") {
+      constraints.removeInPlace(
+        (c) => c.kind === "presentAt" || c.kind === "absent"
+      );
+      constraints.push({ kind: "absentAt", index: constraintIndex });
+    } else if (presenceConstraint.kind === "absentAt") {
+      constraints.removeInPlace((c) => c.kind === "absentAt");
+      constraints.push({ kind: "absent" });
     }
   }
 
@@ -105,6 +134,13 @@ function handleLetterLock(state: AppState, { letter }: LetterLockAction): void {
     countConstraint.kind === "atLeast" ? "exactly" : "atLeast";
 }
 
+function handleSelectPosition(
+  state: AppState,
+  { position }: SelectPositionAction
+): void {
+  state.selected = state.selected === undefined ? position : undefined;
+}
+
 export function appStateReducer(
   currentState: AppState,
   action: Action
@@ -112,8 +148,9 @@ export function appStateReducer(
   const nextState = structuredClone(currentState);
 
   if (action.kind === "letter") handleLetterPressed(nextState, action);
-  if (action.kind === "up") handleLetterUp(nextState, action);
-  if (action.kind === "lock") handleLetterLock(nextState, action);
+  else if (action.kind === "up") handleLetterUp(nextState, action);
+  else if (action.kind === "lock") handleLetterLock(nextState, action);
+  else if (action.kind === "select") handleSelectPosition(nextState, action);
 
   return nextState;
 }

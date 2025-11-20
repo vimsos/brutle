@@ -1,9 +1,4 @@
-import {
-  Action,
-  AppState,
-  Constraint,
-  defaultLetterConstraints,
-} from "@/AppState";
+import { Action, AppState, defaultLetterConstraints } from "@/AppState";
 import { Dispatch } from "react";
 
 type KeyState = {
@@ -16,13 +11,12 @@ function defaultKeyState(): KeyState {
   return { strikethrough: true, count: 0, locked: false };
 }
 
-function deriveKeyStates(
-  keyboard: string[][],
-  input: Map<string, Constraint[]>
-): Map<string, KeyState> {
+function deriveState(input: AppState): Map<string, KeyState> {
+  const { keyboard } = input;
   return new Map<string, KeyState>(
     keyboard.flat().map((key) => {
-      const constraints = input.get(key) ?? defaultLetterConstraints();
+      const constraints =
+        input.constraints.get(key) ?? defaultLetterConstraints();
 
       const strikethrough = constraints.some((c) => c.kind === "absent");
       const countConstraint = constraints.find(
@@ -43,8 +37,8 @@ export function Keyboard({
   state: AppState;
   dispatch: Dispatch<Action>;
 }) {
-  const { keyboard, constraints } = state;
-  const keyStates = deriveKeyStates(keyboard, constraints);
+  const { keyboard } = state;
+  const derived = deriveState(state);
 
   return (
     <div className="m-2">
@@ -52,7 +46,7 @@ export function Keyboard({
         return (
           <div key={`kb-row-${index}`} className="flex justify-center p-0.5">
             {row.map((letter) => {
-              const keyState = keyStates.get(letter) ?? defaultKeyState();
+              const keyState = derived.get(letter) ?? defaultKeyState();
               return (
                 <Key
                   key={`kb-${letter}`}
